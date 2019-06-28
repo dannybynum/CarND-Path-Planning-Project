@@ -7,6 +7,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "helpers.h"
 #include "json.hpp"
+#include "spline.h"
 
 // for convenience
 using nlohmann::json;
@@ -97,9 +98,28 @@ int main() {
            * TODO: define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
+		  //DWB Added Starter Code To Make Vehicle Go Straight June-28
+		  double dist_inc = 0.5;
+		  for (int i = 0; i < 50; ++i) {
+			  
+			  double next_s = car_s + (i + 1) * dist_inc;
+			  double next_d = 6;								
+			  
+			  
 
+			  //starter code for following center of right-most lane
+			  /*vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			  next_x_vals.push_back(xy[0]);
+			  next_y_vals.push_back(xy[1]);*/
 
-          msgJson["next_x"] = next_x_vals;
+			  //starter code that just makes car keep going straight
+			  /*next_x_vals.push_back(car_x + (dist_inc*i)*cos(deg2rad(car_yaw)));
+			  next_y_vals.push_back(car_y + (dist_inc*i)*sin(deg2rad(car_yaw)));*/
+		  }
+		   
+		    
+
+		  msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
           auto msg = "42[\"control\","+ msgJson.dump()+"]";
