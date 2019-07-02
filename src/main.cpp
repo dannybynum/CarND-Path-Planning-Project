@@ -113,9 +113,9 @@ int main() {
 		  }
 
 		  bool too_close_flag = false;
-		  bool command_lane_0_flag = false;
-		  bool command_lane_1_flag = false;
-		  bool command_lane_2_flag = false;
+		  int clear_lane_0_flag = true;
+		  int clear_lane_1_flag = true;
+		  int clear_lane_2_flag = true;
 
 
 
@@ -147,67 +147,101 @@ int main() {
 			  //step 2:  If step1 says there is a car in my lane then I'll determine if I can change lanes based on each case in sensor_fusion list
 			  //check to see if can change lanes around the traffic from my current lane number 0,1,2 (from left to right)
 			  
-			  
-			  
-			  switch(command_lane)
+			  if (d<(2 + (4*0) + 2) && d>(2 + (4*0) - 2))
 			  {
-			  case 0:
-				  if (d<(2 + (4 * (command_lane + 1)) + 2) && d>(2 + (4 * (command_lane + 1)) - 2))
+				  //check if car in this lane is also too close to execute a lane change
+				  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
 				  {
-					  if ((check_car_s + 5 < car_s) && ((check_car_s - car_s) > 30))
-					  {
-						  command_lane_1_flag = true;
-					  }
-					  else
-					  {
-						  command_lane_1_flag = false;
-					  }
+					  clear_lane_0_flag = false;
+				  }
 
-				  }
-				  //if no cars at all in left lane then also switch to that lane
-				  else
-					  command_lane_1_flag = true;
-				  break;
-			  
-			  case 1:
-				  //in center lane so check left first (for no good reason) and then check right
-				  //FIXME a cost fuction for moving left or right based on the speed of those vehicles would be better implementation
-				  if (d<(2 + (4 * (command_lane - 1)) + 2) && d>(2 + (4 * (command_lane - 1)) - 2))
-				  {
-					  // now checking car is behind us or greater than 30m in front of us 
-					  //also adding +5 buffer spacing before I change lanes
-					  if ((check_car_s + 5 < car_s) && ((check_car_s - car_s) > 30))
-					  {
-						  command_lane_0_flag = true;
-						  too_close_flag = false;
-					  }
-				  }
-				  else if (d<(2 + (4 * (command_lane + 1)) + 2) && d>(2 + (4 * (command_lane + 1)) - 2))
-				  {
-					  // now checking car is behind us or greater than 30m in front of us 
-					  //also adding +5 buffer spacing before I change lanes
-					  if ((check_car_s + 5 < car_s) && ((check_car_s - car_s) > 30))
-					  {
-						  command_lane_2_flag = true;
-						  too_close_flag = false;
-					  }
-				  }
-				  break;
-			  
-			  case 2:
-				  //in right-most lane so only checking ability to change lanes left
-				  if (d<(2 + (4 * (command_lane - 1)) + 2) && d>(2 + (4 * (command_lane - 1)) - 2))
-				  {
-					  if ((check_car_s + 5 < car_s) && ((check_car_s - car_s) > 30))
-					  {
-						  command_lane_1_flag = true;
-						  too_close_flag = false;
-					  }
-				  }
-				  break;
-			  default:
-				  std::cout << "invalid lane choice" << std::endl;
 			  }
+
+
+			  if (d<(2 + (4*1) + 2) && d>(2 + (4*1) - 2))
+			  {
+				  //check if car in this lane is also too close to execute a lane change
+				  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+				  {
+					  clear_lane_1_flag = false;
+				  }
+
+			  }
+
+			  if (d<(2 + (4*2) + 2) && d>(2 + (4*2) - 2))
+			  {
+				  //check if car in this lane is also too close to execute a lane change
+				  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+				  {
+					  clear_lane_2_flag = false;
+				  }
+
+			  }
+			  
+
+			  			   			   
+			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			  //switch(command_lane)
+			  //{
+			  //case 0:
+				 // //first check if this sensor_fusion reported car is in right lane over
+				 // 
+				 // if (d<(2 + (4 * (command_lane + 1)) + 2) && d>(2 + (4 * (command_lane + 1)) - 2))
+				 // {
+					//  //check if car in this lane is also too close to execute a lane change
+					//  if ((check_car_s > car_s-5) && ((check_car_s - car_s) < 50))
+					//  {
+					//	  clear_lane_1_flag = false;
+					//  }
+					//  
+				 // }
+
+				 // break;
+			  //
+			  //case 1:
+				 // //in center lane so check left first (for no good reason) and then check right
+				 // //FIXME a cost fuction for moving left or right based on the speed of those vehicles would be better implementation
+				 // if (d<(2 + (4 * (command_lane - 1)) + 2) && d>(2 + (4 * (command_lane - 1)) - 2))
+				 // {
+					//  //check if car in this lane is also too close to execute a lane change
+					//  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+					//  {
+					//	  clear_lane_0_flag = false;
+					//  }
+
+				 // }
+
+				 // if (d<(2 + (4 * (command_lane + 1)) + 2) && d>(2 + (4 * (command_lane + 1)) - 2))
+				 // {
+					//  //check if car in this lane is also too close to execute a lane change
+					//  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+					//  {
+					//	  clear_lane_2_flag = false;
+					//  }
+
+				 // }
+				 // break;
+			  //
+			  //case 2:
+				 // //in right-most lane so only checking ability to change lanes left
+				 // if (d<(2 + (4 * (command_lane - 1)) + 2) && d>(2 + (4 * (command_lane - 1)) - 2))
+				 // {
+					//  //check if car in this lane is also too close to execute a lane change
+					//  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+					//  {
+					//	  clear_lane_1_flag = false;
+					//  }
+
+				 // }
+				 // break;
+			  //default:
+				 // std::cout << "invalid lane choice" << std::endl;
+			  //}
+			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			  
 			  //Initial implementation from starter code / walkthru - slow down to fixed velocity once detect car in front of you
@@ -234,14 +268,76 @@ int main() {
 			  //}
 		  }
 
-		  if (too_close_flag)
+		  //if (too_close_flag)
+		  //{
+			 // command_velocity -= 0.224; //decrease velocity by some amount if I'm too_close (within 30m) to a car in front of me
+		  //}
+		  //else if(command_velocity<49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
+		  //{
+			 // command_velocity += .224;
+		  //}
+
+
+
+		  switch (command_lane)
 		  {
-			  command_velocity -= 0.224; //decrease velocity by some amount if I'm too_close (within 30m) to a car in front of me
+		  case 0:
+			  if (too_close_flag && clear_lane_1_flag)
+			  {
+				  command_lane = 1;
+			  }
+			  else if (too_close_flag)
+			  {
+				  command_velocity -= 0.224;
+			  }
+
+			  else if (command_velocity < 49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
+			  {
+				  command_velocity += .224;
+			  }
+			  break;
+
+		  case 1:
+			  if (too_close_flag && clear_lane_0_flag)
+			  {
+				  command_lane = 0;
+			  }
+			  else if (too_close_flag && clear_lane_2_flag)
+			  {
+				  command_lane = 2;
+			  }
+			  else if (too_close_flag)
+			  {
+				  command_velocity -= 0.224;
+			  }
+
+			  else if (command_velocity < 49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
+			  {
+				  command_velocity += .224;
+			  }
+			  break;
+
+		  case 2:
+			  if (too_close_flag && clear_lane_1_flag)
+			  {
+				  command_lane = 1;
+			  }
+			  else if (too_close_flag)
+			  {
+				  command_velocity -= 0.224;
+			  }
+
+			  else if (command_velocity < 49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
+			  {
+				  command_velocity += .224;
+			  }
+			  break;
+		  default:
+			  std::cout << "invalid lane choice" << std::endl;
 		  }
-		  else if(command_velocity<49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
-		  {
-			  command_velocity += .224;
-		  }
+
+
+
 
 
 
