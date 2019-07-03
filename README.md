@@ -11,7 +11,7 @@ This is a very basic implementation and could certainly be improved with better 
 
 The planner first builds up a sparse set of points as follows:
 Sparse Points Step 1:  set the first two points to keep the car heading in its current position 
-```python
+```cpp
         make_line_x1 = previous_path_x[prev_size - 1];
         make_line_y1 = previous_path_y[prev_size - 1];
 
@@ -29,7 +29,7 @@ Sparse Points Step 1:  set the first two points to keep the car heading in its c
 ```
 
 Sparse Points Step 2: Pick three more points that are spaced out 30,60, and 90 meters but that also considers commanded lane
-```python
+```cpp
       vector<double> next_sparse_point_0 = getXY(car_s + 30, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
       vector<double> next_sparse_point_1 = getXY(car_s + 60, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
       vector<double> next_sparse_point_2 = getXY(car_s + 90, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
@@ -49,7 +49,7 @@ https://kluge.in-chemnitz.de/opensource/spline/
 
 The whole path planner (creating new points) then is mostly encompassed in the following short code block.  This code takes incremental points in 'x' according to the desired/commanded velocity and the sparse waypoints which have been fit by the spline to give corresponding 'y' value for each incremental 'x' value.
 
-```python
+```cpp
  for (int i = 1; i <= 50 - previous_path_x.size(); i++)
       {
         //here 'x' is oriented horizontally because of above transformation - otherwise this wouldn't be so easy
@@ -61,7 +61,7 @@ The whole path planner (creating new points) then is mostly encompassed in the f
 
         x_add_on = curr_x_point;
 ```
-```python
+```cpp
         next_x_vals.push_back(curr_x_point);
         next_y_vals.push_back(curr_y_point);
 ```
