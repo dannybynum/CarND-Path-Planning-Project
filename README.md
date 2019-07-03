@@ -1,13 +1,87 @@
-# CarND-Path-Planning-Project
+# Danny's CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
    
-### Simulator.
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
+## Reflection:  Design/Construction of the Path Planner 
+Up front considerations:
+*  The length of the path is limited to 50 points and this seemed to work well.  The code runs every time we get a message from the simulator and it seems that only ~2-3 points would get consumed.
+*  The path starts with no points but after we build up a path we only "add on" new points to the old path - this seems to help a lot with minimizing any "jerk."
+"
 
-To run the simulator on Mac/Linux, first make the binary file executable with the following command:
-```shell
-sudo chmod u+x {simulator_file_name}
+This is a very basic implementation and could certainly be improved with better inputs.  In this case the only "inputs" to the path planner are a couple of flags (a) am I too close to car in front of me, and (b) should I change lanes.  The basis for determining if we should change lanes is also very basic - just looks for some gap in front and rear and it favors left changes becuase it looks there first before checking the right.
+
+The planner first builds up a sparse set of points as follows:
+Sparse Points Step 1:  set the first two points to keep the car heading in its current position 
+```python
+        make_line_x1 = previous_path_x[prev_size - 1];
+        make_line_y1 = previous_path_y[prev_size - 1];
+
+        make_line_x2 = previous_path_x[prev_size - 2];
+        make_line_y2 = previous_path_y[prev_size - 2];
+        ref_yaw = atan2(make_line_y1 - make_line_y2, make_line_x1 - make_line_x2);
+
+        //again applying the small trick - generating two points so the new line fit 
+        //is pointed in the direction of current car motion
+        sparse_ptsx.push_back(make_line_x2);
+        sparse_ptsx.push_back(make_line_x1);
+
+        sparse_ptsy.push_back(make_line_y2);
+        sparse_ptsy.push_back(make_line_y1);
 ```
+
+Sparse Points Step 2: Pick three more points that are spaced out 30,60, and 90 meters but that also considers commanded lane
+```python
+      vector<double> next_sparse_point_0 = getXY(car_s + 30, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+      vector<double> next_sparse_point_1 = getXY(car_s + 60, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+      vector<double> next_sparse_point_2 = getXY(car_s + 90, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+      sparse_ptsx.push_back(next_sparse_point_0[0]);
+      sparse_ptsx.push_back(next_sparse_point_1[0]);
+      sparse_ptsx.push_back(next_sparse_point_2[0]);
+
+      sparse_ptsy.push_back(next_sparse_point_0[1]);
+      sparse_ptsy.push_back(next_sparse_point_1[1]);
+      sparse_ptsy.push_back(next_sparse_point_2[1]);
+```
+
+
+After having sparse points the Path Planner using a spline (existing library) obtained from the following website:
+https://kluge.in-chemnitz.de/opensource/spline/
+
+The whole path planner (creating new points) then is mostly encompassed in the following short code block.  This code takes incremental points in 'x' according to the desired/commanded velocity and the sparse waypoints which have been fit by the spline to give corresponding 'y' value for each incremental 'x' value.
+
+```python
+ for (int i = 1; i <= 50 - previous_path_x.size(); i++)
+      {
+        //here 'x' is oriented horizontally because of above transformation - otherwise this wouldn't be so easy
+        //we break up the number of points on our spline based on the desired velocity we want to go
+        //note we adjust command_velocity up from 0 and down from 49.5 depending on conditions above
+        double N = (target_dist / (sim_delta_t*command_velocity / 2.24));  //divide by 2.24 is mph to m/s
+        double curr_x_point = x_add_on + (target_x) / N;
+        double curr_y_point = my_spline(curr_x_point);
+
+        x_add_on = curr_x_point;
+```
+```python
+        next_x_vals.push_back(curr_x_point);
+        next_y_vals.push_back(curr_y_point);
+```
+
+
+Note that there is also a "transformation" that occurs to view everything "from the car's reference frame" that the video-walk-thru claims makes the spline fit work better.
+
+[//]: # (Image References)
+
+[image1]: ./ProjectDrivingSuccess.PNG "Screenshot of Simulator Receiving State Estimates from ExtendedKF program"
+
+
+## Screen Shot of successfully running the code with the simulator to meet project specifications
+![alt text][image1]
+
+
+
+
+### Notes from Udacity on project setup
+You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
 ### Goals
 In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
@@ -16,13 +90,6 @@ In this project your goal is to safely navigate around a virtual highway with ot
 Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
 
 The highway's waypoints loop around so the frenet s value, distance along the road, goes from 0 to 6945.554.
-
-## Basic Build Instructions
-
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./path_planning`.
 
 Here is the data provided from the Simulator to the C++ Program
 
@@ -69,77 +136,4 @@ the path has processed since last time.
 
 A really helpful resource for doing this project and creating smooth trajectories was using http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single hearder file is really easy to use.
 
----
-
-## Dependencies
-
-* cmake >= 3.5
-  * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `install-mac.sh` or `install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
 

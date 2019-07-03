@@ -105,17 +105,30 @@ int main() {
 		  //std::cout << "previous path size" << prev_size << std::endl;
 
 
-		  //starter code
-		 //determine if there is a car in my lane - so don't hit it
+		  // Using this from the video-walk-thru
+		  // if there is a previous path that we'll be using let's place the 'car' (or really the starting place for the new path)
+		  // at the end of the previous path so that new values get tacked onto the end of the previous path appropraitely
 		  if (prev_size > 0)
-		  {
-			  car_s = end_path_s;
-		  }
+		   {
+		 	  car_s = end_path_s;
+		   }
 
 		  bool too_close_flag = false;
 		  int clear_lane_0_flag = true;
 		  int clear_lane_1_flag = true;
 		  int clear_lane_2_flag = true;
+
+		  float ln_width = 4;
+		  float half_ln_wdth = 2;
+		  float sim_delta_t = 0.02;
+
+		  float same_ln_desire_space = 30;
+		  
+		  //FIXME - this spacing makes the car VERY conservative - it only considers a lane change if lots of space
+		  //but for now when I try decreaing this value of 50 it does lane changes (sometimes two at a time) too frequently
+		  //so leaving this is for now -- but a more robust implementation would account for all of these factors - perhaps using FSM
+		  float adj_ln_desire_space_front = 19.99;        
+		  float adj_ln_desire_space_rear = 9.99;
 
 
 
@@ -129,28 +142,32 @@ int main() {
 			  double check_speed = sqrt(vx*vx + vy * vy);                 //speed of car in my lane
 			  double check_car_s = sensor_fusion[i][5];                   // s (longitudinal) position of car
 
-			  check_car_s += ((double)prev_size*.02*check_speed);         //since using some previous path points 
+			  check_car_s += ((double)prev_size*sim_delta_t*check_speed);         //since using some previous path points
+
+			  double current_lane_left_d = half_ln_wdth + ln_width * command_lane + half_ln_wdth;
+			  double current_lane_right_d = half_ln_wdth + ln_width * command_lane - half_ln_wdth;
 
 
 			  //Step1:  if car is in my lane I will set the too_close_flag and either slow down or change lanes
 			  //If there is a car in my lane and within 30meters then set flag to start slowing down
 			  //but I will also be checking to see if can change lanes right or left before "accepting" this flag
-			  
-			  if (d<(2 + 4 * command_lane + 2) && d>(2 + 4 * command_lane - 2))   //checking +/-2 because lane is 4meters wide
+
+			  if (d<(current_lane_left_d) && d>(current_lane_right_d))   //checking +/-2 because lane is 4meters wide
 			  {
 				  if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))  //check car is in front of us, and it's less than 30meters
 				  {
 					  too_close_flag = true;                                  //I'm too_close, so will either slow down or change lanes
 				  }
 			  }
-			  
-			  //step 2:  If step1 says there is a car in my lane then I'll determine if I can change lanes based on each case in sensor_fusion list
-			  //check to see if can change lanes around the traffic from my current lane number 0,1,2 (from left to right)
-			  
-			  if (d<(2 + (4*0) + 2) && d>(2 + (4*0) - 2))
+
+			  //Step 2:  If step1 says there is a car in my lane then I'll determine if can change lanes by seeing if the other lanes are clear
+			  //This has to go through each item in the list.  So I acutally start by assuing it is clear then only set it to not be clear if there is a car
+			  //in that lane in the sensor fusion list
+
+			  if (d<(2 + (ln_width* 0) + 2) && d>(2 + (ln_width * 0) - 2))
 			  {
 				  //check if car in this lane is also too close to execute a lane change
-				  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+				  if ((check_car_s > car_s - adj_ln_desire_space_rear) && ((check_car_s - car_s) < adj_ln_desire_space_front))
 				  {
 					  clear_lane_0_flag = false;
 				  }
@@ -158,129 +175,39 @@ int main() {
 			  }
 
 
-			  if (d<(2 + (4*1) + 2) && d>(2 + (4*1) - 2))
+			  if (d<(2 + (ln_width * 1) + 2) && d>(2 + (ln_width * 1) - 2))
 			  {
 				  //check if car in this lane is also too close to execute a lane change
-				  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+				  if ((check_car_s > car_s - adj_ln_desire_space_rear) && ((check_car_s - car_s) < adj_ln_desire_space_front))
 				  {
 					  clear_lane_1_flag = false;
 				  }
 
 			  }
 
-			  if (d<(2 + (4*2) + 2) && d>(2 + (4*2) - 2))
+			  if (d<(2 + (ln_width * 2) + 2) && d>(2 + (ln_width * 2) - 2))
 			  {
 				  //check if car in this lane is also too close to execute a lane change
-				  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
+				  if ((check_car_s > car_s - adj_ln_desire_space_rear) && ((check_car_s - car_s) < adj_ln_desire_space_front))
 				  {
 					  clear_lane_2_flag = false;
 				  }
 
 			  }
-			  
 
-			  			   			   
-			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			  //switch(command_lane)
-			  //{
-			  //case 0:
-				 // //first check if this sensor_fusion reported car is in right lane over
-				 // 
-				 // if (d<(2 + (4 * (command_lane + 1)) + 2) && d>(2 + (4 * (command_lane + 1)) - 2))
-				 // {
-					//  //check if car in this lane is also too close to execute a lane change
-					//  if ((check_car_s > car_s-5) && ((check_car_s - car_s) < 50))
-					//  {
-					//	  clear_lane_1_flag = false;
-					//  }
-					//  
-				 // }
-
-				 // break;
-			  //
-			  //case 1:
-				 // //in center lane so check left first (for no good reason) and then check right
-				 // //FIXME a cost fuction for moving left or right based on the speed of those vehicles would be better implementation
-				 // if (d<(2 + (4 * (command_lane - 1)) + 2) && d>(2 + (4 * (command_lane - 1)) - 2))
-				 // {
-					//  //check if car in this lane is also too close to execute a lane change
-					//  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
-					//  {
-					//	  clear_lane_0_flag = false;
-					//  }
-
-				 // }
-
-				 // if (d<(2 + (4 * (command_lane + 1)) + 2) && d>(2 + (4 * (command_lane + 1)) - 2))
-				 // {
-					//  //check if car in this lane is also too close to execute a lane change
-					//  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
-					//  {
-					//	  clear_lane_2_flag = false;
-					//  }
-
-				 // }
-				 // break;
-			  //
-			  //case 2:
-				 // //in right-most lane so only checking ability to change lanes left
-				 // if (d<(2 + (4 * (command_lane - 1)) + 2) && d>(2 + (4 * (command_lane - 1)) - 2))
-				 // {
-					//  //check if car in this lane is also too close to execute a lane change
-					//  if ((check_car_s > car_s - 5) && ((check_car_s - car_s) < 50))
-					//  {
-					//	  clear_lane_1_flag = false;
-					//  }
-
-				 // }
-				 // break;
-			  //default:
-				 // std::cout << "invalid lane choice" << std::endl;
-			  //}
-			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-			  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-			  
-			  //Initial implementation from starter code / walkthru - slow down to fixed velocity once detect car in front of you
-			  //if (d<(2 + 4 * command_lane + 2) && d>(2 + 4 * command_lane - 2))   //checking +/-2 because lane is 4meters wide
-			  //{
-				 // double vx = sensor_fusion[i][3];
-				 // double vy = sensor_fusion[i][4];
-				 // double check_speed = sqrt(vx*vx + vy * vy);                 //speed of car in my lane
-				 // double check_car_s = sensor_fusion[i][5];                   // s (longitudinal) position of car
-
-				 // check_car_s += ((double)prev_size*.02*check_speed);         //since using some previous path points 
-
-				 // if ((check_car_s > car_s) && ((check_car_s - car_s) < 30))  //check car is in front of us, and it's less than 30meters
-				 // {
-					//  //ref_velocity = 29.5;
-					//  //FIXME - we'll want to add more logic here ... match car's velocity ...or change lanes or something like that.
-					//  too_close_flag = true;
-
-					//  if (command_lane > 0)
-					//  {
-					//	  command_lane = 0;
-					//  }
-				 // }
-			  //}
 		  }
 
-		  //if (too_close_flag)
-		  //{
-			 // command_velocity -= 0.224; //decrease velocity by some amount if I'm too_close (within 30m) to a car in front of me
-		  //}
-		  //else if(command_velocity<49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
-		  //{
-			 // command_velocity += .224;
-		  //}
 
-
+		  //Now we are outside of the fusion list loop and it is time to determine if we should change lanes or command a new velocity
+		  //NOTE that these new velocities and lanes are fed into the path planner so that the car executes these smoothly and with continuity
+		  //from the previous path
 
 		  switch (command_lane)
 		  {
+		  //if currenly in lane 0 (left-most lane) then we will do one of three things
+		  // First priority is to check if we are two close to car in front and if next lane over is clear then lets just switch to that lane
+	      // Second Priority is to check if we are too close to car in front and lane isn't clear (by implication of first if) then we will incrementally slow down velocity
+		  // Third Priority is that if no one is too close but our speed hasn't yet reached the desired speed of 49.5 then we should speed up incrementally
 		  case 0:
 			  if (too_close_flag && clear_lane_1_flag)
 			  {
@@ -297,8 +224,9 @@ int main() {
 			  }
 			  break;
 
+		  //See notes on case 1 - we add the check for the left lane here because n ow in the middle.
 		  case 1:
-			  if (too_close_flag && clear_lane_0_flag)
+			  if (too_close_flag && clear_lane_0_flag) 
 			  {
 				  command_lane = 0;
 			  }
@@ -311,7 +239,7 @@ int main() {
 				  command_velocity -= 0.224;
 			  }
 
-			  else if (command_velocity < 49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
+			  else if (command_velocity < 49.5) 
 			  {
 				  command_velocity += .224;
 			  }
@@ -327,7 +255,7 @@ int main() {
 				  command_velocity -= 0.224;
 			  }
 
-			  else if (command_velocity < 49.5) //using else-if here because I only want to consider increasing velocity if I'm NOT too-close
+			  else if (command_velocity < 49.5)
 			  {
 				  command_velocity += .224;
 			  }
@@ -340,27 +268,28 @@ int main() {
 
 
 
-
+		  // The next_x and next_y_vals vectors hold the planned path that the car will "visit" sequentially every 0.02 seconds
+		  // the project just has us create these vectors dynamically - the code provided actually executes the "consumption" of these points
+		  // and also the control of the vehicle to follow these points.
           vector<double> next_x_vals;
           vector<double> next_y_vals;
-
-          /**
-           * TODO: define a path made up of (x,y) points that the car will visit
-           *   sequentially every .02 seconds
-           */
-
-
-		   //More Starter Code - Approach is to create widely spaced (x,y) waypoints evenly spaced at 30m 's'(?)
-			   //Then these sparse points will be interpolated with a spline to get more points
-		  vector <double> ptsx;
-		  vector <double> ptsy;
+		  
+		  // Using these two vectors from video-walk-thru
+		  // The Approach here is to create widely spaced (x,y) waypoints within ptsx and ptsy and then use the spline to fit more points
+		  vector <double> sparse_ptsx;
+		  vector <double> sparse_ptsy;
 
 		  //temp variables for car's current position
 		  double ref_yaw = deg2rad(car_yaw);
 
-		  double make_line_x1 = 0;                     //'1' is the last point in previous path 
+		  // Going to build the new planned path based on where the car is at now and where car was just at
+		  // I call it "make line" because we want the new spline fit to start with a straight line 
+		  // going in the same direction as the car was heading in previously
+		  //'1' is the car's current position- where I want to start my new path plan
+		  //'2' is the next to the last point the car was at
+		  double make_line_x1 = 0;                     
 		  double make_line_y1 = 0;
-		  double make_line_x2 = 0;					   //'2' is the next to last point in previous path
+		  double make_line_x2 = 0;
 		  double make_line_y2 = 0;
 
 
@@ -375,15 +304,16 @@ int main() {
 			  ref_yaw = deg2rad(car_yaw);
 
 			  //small trick - generating two points so I have a line that is pointed in direction of current car motion
-			  make_line_x2 = car_x - cos(ref_yaw);   //FIXME - I'm using ref_yaw here which is in radians, in video he used car_yaw
+			  //FIXME - I'm using ref_yaw here which is in radians, in video he used car_yaw, doesn't seem to matter
+			  make_line_x2 = car_x - cos(ref_yaw);   
 			  make_line_y2 = car_y - sin(ref_yaw);
 
 
-			  ptsx.push_back(make_line_x2);
-			  ptsx.push_back(make_line_x1);
+			  sparse_ptsx.push_back(make_line_x2);
+			  sparse_ptsx.push_back(make_line_x1);
 
-			  ptsy.push_back(make_line_y2);
-			  ptsy.push_back(make_line_y1);
+			  sparse_ptsy.push_back(make_line_y2);
+			  sparse_ptsy.push_back(make_line_y1);
 		  }
 		  //else I'm using the previous path's end points (two of them) as the starting reference for new path
 		  //don't want my new spline to immediately travel in a different direction when fitting - want to force it to start
@@ -398,64 +328,74 @@ int main() {
 			  ref_yaw = atan2(make_line_y1 - make_line_y2, make_line_x1 - make_line_x2);
 
 			  //again applying the small trick - generating two points so the new line fit is pointed in the direction of current car motion
-			  ptsx.push_back(make_line_x2);
-			  ptsx.push_back(make_line_x1);
+			  sparse_ptsx.push_back(make_line_x2);
+			  sparse_ptsx.push_back(make_line_x1);
 
-			  ptsy.push_back(make_line_y2);
-			  ptsy.push_back(make_line_y1);
+			  sparse_ptsy.push_back(make_line_y2);
+			  sparse_ptsy.push_back(make_line_y1);
 
 		  }
 
+		  //used from video-walk-thru
 		  //at this point the ptsx and ptsy arrays have two points (associated with previous path or previous car position/heading)
 		  //now going to add additional points - spacing of 30meters ahead of car current position utilizing the pre-existing waypoints and the getXY function
+		  //This next point in the sparse points set considers the current "command_lane" so it will also include lane changes as needed
+		  vector<double> next_sparse_point_0 = getXY(car_s + 30, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+		  vector<double> next_sparse_point_1 = getXY(car_s + 60, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+		  vector<double> next_sparse_point_2 = getXY(car_s + 90, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
-		  vector<double> next_waypt0 = getXY(car_s + 30, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-		  vector<double> next_waypt1 = getXY(car_s + 60, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-		  vector<double> next_waypt2 = getXY(car_s + 90, (2 + 4 * command_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+		  sparse_ptsx.push_back(next_sparse_point_0[0]);
+		  sparse_ptsx.push_back(next_sparse_point_1[0]);
+		  sparse_ptsx.push_back(next_sparse_point_2[0]);
 
-		  ptsx.push_back(next_waypt0[0]);
-		  ptsx.push_back(next_waypt1[0]);
-		  ptsx.push_back(next_waypt2[0]);
-
-		  ptsy.push_back(next_waypt0[1]);
-		  ptsy.push_back(next_waypt1[1]);
-		  ptsy.push_back(next_waypt2[1]);
+		  sparse_ptsy.push_back(next_sparse_point_0[1]);
+		  sparse_ptsy.push_back(next_sparse_point_1[1]);
+		  sparse_ptsy.push_back(next_sparse_point_2[1]);
 
 
 
-		  //starter code
+		  //borrowed from walk-thru
 		  //intermediate transformation to shift the angle of car to 0 degrees for some calculations
-		  for (int i = 0; i < ptsx.size(); i++)
+		  //NOTE this is apperently critical for getting the sline fit to work - makes sure you are oriented horizontally 
+		  //so you're spline doesn't start to go verticle which would mean multiple possible y points for a given x point
+		  for (int i = 0; i < sparse_ptsx.size(); i++)
 		  {
-			  double shift_x = ptsx[i] - make_line_x1;
-			  double shift_y = ptsy[i] - make_line_y1;
+			  double shift_x = sparse_ptsx[i] - make_line_x1;
+			  double shift_y = sparse_ptsy[i] - make_line_y1;
 
-			  ptsx[i] = (shift_x*cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
-			  ptsy[i] = (shift_x*sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
+			  sparse_ptsx[i] = (shift_x*cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw));
+			  sparse_ptsy[i] = (shift_x*sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw));
 		  }
 
-		  //starter code - make spline
+		  //This is the couple of lines that draws on the spine.h to build the spline to fit the points in our sparse set
 		  tk::spline my_spline;
-		  my_spline.set_points(ptsx, ptsy);
+		  my_spline.set_points(sparse_ptsx, sparse_ptsy);
 		  
-		  //use all (unused) points from previous path in the new path
-		  for (int i = 0; i < previous_path_x.size(); i++)
-		  {
-			  next_x_vals.push_back(previous_path_x[i]);
-			  next_y_vals.push_back(previous_path_y[i]);
-		  }
 
 		  //starter code - Break up spline points to travel at desired velocity
-
 		  double target_x = 30.0;
 		  double target_y = my_spline(target_x);
 		  double target_dist = sqrt((target_x)*(target_x) + (target_y)*(target_y));
 
 		  double x_add_on = 0;
 
+
+		  // Now it is time to build the new path based on intentionally selected spline points
+		  // HOWEVER, before we start building the new path we actually include any points that haven't
+		  // been consumed from the previous path
+		  for (int i = 0; i < previous_path_x.size(); i++)
+		  {
+			  next_x_vals.push_back(previous_path_x[i]);
+			  next_y_vals.push_back(previous_path_y[i]);
+		  }
+
+		  //Now building the new path 
 		  for (int i = 1; i <= 50 - previous_path_x.size(); i++)
 		  {
-			  double N = (target_dist / (.02*command_velocity / 2.24));  //divide by 2.24 is mph to m/s
+			  //here 'x' is oriented horizontally because of above transformation - otherwise this wouldn't be so easy
+			  //we break up the number of points on our spline based on the desired velocity we want to go
+			  //note we adjust command_velocity up from 0 and down from 49.5 depending on conditions above
+			  double N = (target_dist / (sim_delta_t*command_velocity / 2.24));  //divide by 2.24 is mph to m/s
 			  double curr_x_point = x_add_on + (target_x) / N;
 			  double curr_y_point = my_spline(curr_x_point);
 
@@ -476,26 +416,17 @@ int main() {
 		  }
 
 
-		  //DWB Added Starter Code To Make Vehicle Go Straight June-28
+		  //DWB Added Starter Code To Create a path (next_vals) that make vehicle go straight
 		  //double dist_inc = 0.5;
 		  //for (int i = 0; i < 50; ++i) {
-			  
-
-			  				
-
-
-			  //starter code for following center of right-most lane
-			  //using (i+1) for next_s because I want the new point to be at least one point ahead of where I'm currently at.
-			  /*double next_s = car_s + (i + 1) * dist_inc;
-			  //leftmost lane you just need to move over 2 meters from yellow center-line
-			  double next_d = 2+(4*num_lanes_frm_left;						
-			  vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-			  next_x_vals.push_back(xy[0]);
-			  next_y_vals.push_back(xy[1]);*/
-
-			  //starter code that just makes car keep going straight
-			  /*next_x_vals.push_back(car_x + (dist_inc*i)*cos(deg2rad(car_yaw)));
-			  next_y_vals.push_back(car_y + (dist_inc*i)*sin(deg2rad(car_yaw)));*/
+		  //    //starter code for following center of right-most lane
+			 // //using (i+1) for next_s because I want the new point to be at least one point ahead of where I'm currently at.
+			 // double next_s = car_s + (i + 1) * dist_inc;
+			 // //leftmost lane you just need to move over 2 meters from yellow center-line
+			 // double next_d = 2+(4*num_lanes_frm_left;						
+			 // vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+			 // next_x_vals.push_back(xy[0]);
+			 // next_y_vals.push_back(xy[1]);
 		  //}
 		   
 		  json msgJson;
